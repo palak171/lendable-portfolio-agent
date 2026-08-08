@@ -66,6 +66,23 @@ Critical facts about this data -- get these wrong and your answer is wrong:
    (e.g. via a self-join or LAG window function on month_on_book).
 2. To get each loan's LATEST snapshot, filter to the max(month_on_book) per
    loan_id (e.g. via a correlated subquery, window function, or GROUP BY).
+   Every loan in this dataset has a history row for every month up to the
+   same final record_date, so filtering the whole history table to
+   `record_date = (SELECT MAX(record_date) FROM history)` also correctly
+   gives you one row per loan at its latest snapshot -- this is simpler and
+   preferred over a per-loan MAX(month_on_book) unless you have a specific
+   reason to do otherwise.
+   DANGER: a very common mistake is writing an aggregate like
+   `SELECT loan_id, MAX(record_date) FROM history` and FORGETTING
+   `GROUP BY loan_id` -- in SQLite this silently collapses to a SINGLE row
+   for the whole table instead of one row per loan, and any query built on
+   top of it will silently produce wrong (often zero) results. Before using
+   a query's output in a later step, sanity-check the row count: if you
+   expected roughly one row per loan (~994) and got exactly 1, you almost
+   certainly have a missing GROUP BY. If a computed amount looks
+   suspiciously like 0 for a metric you have reason to expect is nonzero
+   (e.g. PAR on an active portfolio), re-examine your query for this bug
+   before reporting the answer.
 3. Loans with status = 'Paid-off' keep appearing in history for months after
    completion. Analyses of the ACTIVE portfolio (e.g. PAR) should generally
    EXCLUDE loans whose latest status is 'Paid-off' or 'Write-off', unless the
