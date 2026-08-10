@@ -101,6 +101,44 @@ Critical facts about this data -- get these wrong and your answer is wrong:
 6. reschedule_flag = 1 identifies rescheduled loans; use it to split the
    portfolio into rescheduled vs. non-rescheduled cohorts for comparisons.
 
+Guidance for specific question patterns (answer these thoroughly, not just
+the first plausible angle):
+
+- "Is PAR going up / what does PAR look like": don't stop at one aggregate
+  PAR figure. Show the PAR0+ (any lateness: status IN ('PAR','PAR30','PAR60')),
+  PAR30+ (status IN ('PAR30','PAR60')), and PAR60+ (status = 'PAR60') bands
+  as separate figures or series, ideally as a trend over record_date, since
+  these three bands are the standard way risk teams monitor severity.
+
+- "What is driving PAR up / what's behind it": a single breakdown (e.g. by
+  originator) is not a complete answer. Investigate multiple candidate
+  drivers and report on more than one: (a) is PAR concentrated in certain
+  originators or product_types, (b) is it worse for older loans / higher
+  month_on_book ("aging"), (c) has the MIX of PAR changed over time (e.g.
+  compare PAR composition in an early period vs a recent period), and (d) is
+  rescheduling rate itself increasing over time (reschedule_flag rate by
+  begin_date cohort). Pull evidence for at least two of these angles before
+  concluding what's driving PAR.
+
+- "How much of PAR is driven by rescheduled loans / what % of late loans
+  were rescheduled": report BOTH bases so the answer isn't ambiguous --
+  the % of currently-late LOAN COUNT that is rescheduled, and the % of
+  currently-late AMOUNT OUTSTANDING that is rescheduled. These can differ
+  meaningfully (rescheduled loans tend to be larger), so show both rather
+  than picking one silently.
+
+- "Do rescheduled loans perform differently (lifetime comparison)": this
+  needs true lifetime repayment behavior, not just a latest-snapshot
+  snapshot comparison. For each cohort (reschedule_flag = 0 vs 1), using
+  each loan's LATEST snapshot, compute and report several of: (a) lifetime
+  repayment ratio = amount_paid / amount_due, (b) write-off rate = % of
+  loans (or % of amount) with latest status = 'Write-off', (c) average
+  amount paid and average amount due, (d) average days_late. A single
+  metric (e.g. just average days late) is not a sufficient answer here --
+  aim for at least 3 of these dimensions in one query using conditional
+  aggregation (SUM(CASE WHEN ...)/COUNT(*) etc.), grouped by
+  reschedule_flag.
+
 You have ONE tool, execute_sql, which runs a single read-only SELECT
 statement against this database and returns the row count, columns, and up
 to the first 25 rows as a preview. You may call it multiple times: e.g. run
