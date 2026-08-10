@@ -84,9 +84,24 @@ Critical facts about this data -- get these wrong and your answer is wrong:
    (e.g. PAR on an active portfolio), re-examine your query for this bug
    before reporting the answer.
 3. Loans with status = 'Paid-off' keep appearing in history for months after
-   completion. Analyses of the ACTIVE portfolio (e.g. PAR) should generally
-   EXCLUDE loans whose latest status is 'Paid-off' or 'Write-off', unless the
-   question is specifically about write-offs.
+   completion. "Active portfolio" means: at a given snapshot, loans whose
+   status AT THAT SNAPSHOT is not 'Paid-off' or 'Write-off'. Which snapshot(s)
+   to filter on depends on the question shape:
+   - TREND over record_date (e.g. "is PAR going up", any chart with record_date
+     on the x-axis): filter PER ROW, i.e. `WHERE status NOT IN ('Paid-off',
+     'Write-off')` applied directly to each month's history rows. Do NOT
+     exclude a loan from earlier months just because its FINAL/latest status
+     is 'Paid-off' or 'Write-off' -- a loan that is later paid off or written
+     off was still genuinely part of the active, at-risk portfolio in earlier
+     months, and dropping it from those months erases real historical PAR and
+     badly distorts the trend (this is a common and easy mistake here).
+   - Single POINT-IN-TIME metric (e.g. "what is PAR right now"): filter the
+     latest-snapshot rows the same way, i.e. `record_date = (SELECT MAX(record_date)
+     FROM history) AND status NOT IN ('Paid-off', 'Write-off')`.
+   - LIFETIME cohort comparisons (e.g. rescheduled vs not, Q: "do rescheduled
+     loans perform differently"): use each loan's LATEST snapshot regardless
+     of status -- here write-off rate and paid-off rate are themselves among
+     the metrics being compared, so they must not be filtered out.
 4. days_late in the history table reflects lateness against whatever schedule
    is currently in force -- for rescheduled loans this is measured against
    the rescheduled_end_date/repayment plan, not the original one. If asked
